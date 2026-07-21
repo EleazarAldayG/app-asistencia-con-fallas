@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Tracker</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        /* (Keep your existing CSS - it's the same) */
+        body { font-family: sans-serif; margin: 20px; background: #f4f7fa; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .nav button { padding: 8px 16px; border: none; background: #e9ecef; cursor: pointer; border-radius: 4px; }
+        .nav button.active { background: #007bff; color: white; }
+        .form-group { margin-bottom: 10px; }
+        label { display: inline-block; width: 100px; }
+        input, select, button { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background: #28a745; color: white; border: none; cursor: pointer; }
+        button.danger { background: #dc3545; }
+        button.warning { background: #ffc107; color: black; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f1f1f1; }
+        .tab-content { margin-top: 15px; }
+        .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .mb-10 { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<div id="app" class="container">
+    <h1>📚 Student Attendance Tracker</h1>
+
+    <!-- Navigation -->
+    <div class="nav">
+        <button v-for="tab in tabs" :key="tab" @click="currentTab = tab" :class="{ active: currentTab === tab }">
+            {{ tab }}
+        </button>
+    </div>
+
+    <!-- ========== CLASSES TAB ========== -->
+    <div v-if="currentTab === 'Classes'" class="tab-content">
+        <h2>Manage Classes</h2>
+        <div class="form-group flex">
+            <input v-model="newClass.name" maxlength="10" placeholder="Class Name">
+            <input v-model="newClass.description" placeholder="Description">
+            <button @click="addClass">Add Class</button>
+        </div>
+        <table>
+            <tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr>
+            <tr v-for="cls in classes" :key="cls.id">
+                <td>{{ cls.id }}</td>
+                <td>
+                    <span v-if="editingClass !== cls.id">{{ cls.name }}</span>
+                    <input v-else v-model="editClassData.name">
+                </td>
+                <td>
+                    <span v-if="editingClass !== cls.id">{{ cls.description }}</span>
+                    <input v-else v-model="editClassData.description">
+                </td>
+                <td>
+                    <span v-if="editingClass !== cls.id">
+                        <button class="warning" @click="startEditClass(cls)">Edit</button>
+                        <button class="danger" @click="deleteClass(cls.id)">Delete</button>
+                    </span>
+                    <span v-else>
+                        <button @click="saveEditClass(cls.id)">Save</button>
+                        <button @click="editingClass = null">Cancel</button>
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ========== STUDENTS TAB ========== -->
+    <div v-if="currentTab === 'Students'" class="tab-content">
+        <h2>Manage Students</h2>
+        <div class="form-group flex">
+            <input v-model="newStudent.name" maxlength="10" placeholder="Student Name">
+            <select v-model="newStudent.class_id">
+                <option value="">Select Class</option>
+                <option v-for="cls in classes" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
+            </select>
+            <button @click="addStudent">Add Student</button>
+        </div>
+        <div class="form-group">
+            <label>Filter by Class:</label>
+            <select v-model="studentFilterClass">
+                <option value="">All</option>
+                <option v-for="cls in classes" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
+            </select>
+        </div>
+        <table>
+            <tr><th>ID</th><th>Name</th><th>Class</th><th>Actions</th></tr>
+            <tr v-for="stu in filteredStudents" :key="stu.id">
+                <td>{{ stu.id }}</td>
+                <td>
+                    <span v-if="editingStudent !== stu.id">{{ stu.name }}</span>
+                    <input v-else v-model="editStudentData.name">
+                </td>
+                <td>
+                    <span v-if="editingStudent !== stu.id">{{ getClassName(stu.class_id) }}</span>
+                    <select v-else v-model="editStudentData.class_id">
+                        <option v-for="cls in classes" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
+                    </select>
+                </td>
+                <td>
+                    <span v-if="editingStudent !== stu.id">
+                        <button class="warning" @click="startEditStudent(stu)">Edit</button>
+                        <button class="danger" @click="deleteStudent(stu.id)">Delete</button>
+                    </span>
+                    <span v-else>
+                        <button @click="saveEditStudent(stu.id)">Save</button>
+                        <button @click="editingStudent = null">Cancel</button>
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ========== MARK ATTENDANCE TAB ========== -->
+    <div v-if="currentTab === 'Mark Attendance'" class="tab-content">
+        <h2>Mark Attendance</h2>
+        <div class="flex mb-10">
+            <label>Select Class:</label>
+            <select v-model="attendanceClassId" @change="loadStudentsForAttendance">
+                <option value="">-- Select --</option>
+                <option v-for="cls in classes" :key="cls.id" :value="cls.id">{{ cls.name }}</option>
+            </select>
+            <label>Date:</label>
+            <input type="date" v-model="attendanceDate">
+            <button @click="saveAttendance">Save All</button>
+        </div>
+        <table v-if="attendanceStudents.length">
+            <tr><th>Student</th><th>Status</th></tr>
+            <tr v-for="stu in attendanceStudents" :key="stu.id">
+                <td>{{ stu.name }}</td>
+                <td>
+                    <select v-model="stu.attendanceStatus">
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Late">Late</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+        <p v-else>Select a class to load students.</p>
+    </div>
+
+    <!-- ========== VIEW ATTENDANCE TAB ========== -->
+    <div v-if="currentTab === 'View Attendance'" class="tab-content">
+        <h2>Attendance Records</h2>
+        <div class="flex mb-10">
+            <label>Filter by Student:</label>
+            <select v-model="viewStudentId">
+                <option value="">All</option>
+                <option v-for="stu in allStudents" :key="stu.id" :value="stu.id">{{ stu.name }}</option>
+            </select>
+            <label>Date:</label>
+            <input type="date" v-model="viewDate">
+            <button @click="loadAttendance">Refresh</button>
+        </div>
+        <table>
+            <tr><th>Student</th><th>Date</th><th>Status</th></tr>
+            <tr v-for="rec in attendanceRecords" :key="rec.id">
+                <td>{{ getStudentName(rec.student_id) }}</td>
+                <td>{{ rec.date }}</td>
+                <td>{{ rec.status }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  CLOUD-READY: Change this URL to point to your deployed API!
+//  Local: http://localhost:8000
+//  Production: https://your-api.fly.dev  (or similar)
+// ============================================================
+const API_BASE_URL = 'http://localhost:8000';
+
+const { createApp, ref, computed, onMounted, watch } = Vue;
+
+const app = createApp({
+    data() {
+        return {
+            tabs: ['Classes', 'Students', 'Mark Attendance', 'View Attendance'],
+            currentTab: 'Classes',
+            classes: [],
+            students: [],
+            attendanceRecords: [],
+            newClass: { name: '', description: '' },
+            editingClass: null,
+            editClassData: { name: '', description: '' },
+            newStudent: { name: '', class_id: '' },
+            studentFilterClass: '',
+            editingStudent: null,
+            editStudentData: { name: '', class_id: '' },
+            attendanceClassId: '',
+            attendanceDate: new Date().toISOString().split('T')[0],
+            attendanceStudents: [],
+            viewStudentId: '',
+            viewDate: '',
+            allStudents: [],
+        };
+    },
+    computed: {
+        filteredStudents() {
+            if (!this.studentFilterClass) return this.students;
+            return this.students.filter(s => s.class_id === this.studentFilterClass);
+        }
+    },
+    methods: {
+        // --- Helpers with API_BASE_URL ---
+        async fetchAll() {
+            await this.fetchClasses();
+            await this.fetchStudents();
+            await this.fetchAllStudents();
+        },
+        async fetchClasses() {
+            const res = await axios.get(`${API_BASE_URL}/api/classes`);
+            this.classes = res.data;
+        },
+        async fetchStudents() {
+            const res = await axios.get(`${API_BASE_URL}/api/students`);
+            this.students = res.data;
+        },
+        async fetchAllStudents() {
+            const res = await axios.get(`${API_BASE_URL}/api/students`);
+            this.allStudents = res.data;
+        },
+        getClassName(id) {
+            const found = this.classes.find(c => c.id === id);
+            return found ? found.name : 'Unknown';
+        },
+        getStudentName(id) {
+            const found = this.allStudents.find(s => s.id === id);
+            return found ? found.name : 'Unknown';
+        },
+        // --- Classes ---
+        async addClass() {
+            if (!this.newClass.name) return alert('Name is required');
+            await axios.post(`${API_BASE_URL}/api/classes`, this.newClass);
+            this.newClass = { name: '', description: '' };
+            await this.fetchClasses();
+        },
+        startEditClass(cls) {
+            this.editingClass = cls.id;
+            this.editClassData = { name: cls.name, description: cls.description };
+        },
+        async saveEditClass(id) {
+            await axios.put(`${API_BASE_URL}/api/classes/${id}`, this.editClassData);
+            this.editingClass = null;
+            await this.fetchClasses();
+        },
+        async deleteClass(id) {
+            if (!confirm('Delete this class?')) return;
+            await axios.delete(`${API_BASE_URL}/api/classes/${id}`);
+            await this.fetchClasses();
+        },
+        // --- Students ---
+        async addStudent() {
+            if (!this.newStudent.name || !this.newStudent.class_id) return alert('Name and Class required');
+            await axios.post(`${API_BASE_URL}/api/students`, this.newStudent);
+            this.newStudent = { name: '', class_id: '' };
+            await this.fetchStudents();
+            await this.fetchAllStudents();
+        },
+        startEditStudent(stu) {
+            this.editingStudent = stu.id;
+            this.editStudentData = { name: stu.name, class_id: stu.class_id };
+        },
+        async saveEditStudent(id) {
+            await axios.put(`${API_BASE_URL}/api/students/${id}`, this.editStudentData);
+            this.editingStudent = null;
+            await this.fetchStudents();
+            await this.fetchAllStudents();
+        },
+        async deleteStudent(id) {
+            if (!confirm('Delete this student?')) return;
+            await axios.delete(`${API_BASE_URL}/api/students/${id}`);
+            await this.fetchStudents();
+            await this.fetchAllStudents();
+        },
+        // --- Mark Attendance ---
+        async loadStudentsForAttendance() {
+            if (!this.attendanceClassId) { this.attendanceStudents = []; return; }
+            const res = await axios.get(`${API_BASE_URL}/api/students?class_id=${this.attendanceClassId}`);
+            this.attendanceStudents = res.data.map(s => ({
+                ...s,
+                attendanceStatus: 'Present'
+            }));
+        },
+        async saveAttendance() {
+            if (!this.attendanceClassId) return alert('Select a class');
+            if (!this.attendanceDate) return alert('Select a date');
+            const records = this.attendanceStudents.map(s => ({
+                student_id: s.id,
+                status: s.attendanceStatus
+            }));
+            await axios.post(`${API_BASE_URL}/api/attendance/batch`, {
+                date: this.attendanceDate,
+                records: records
+            });
+            alert('Attendance saved!');
+        },
+        // --- View Attendance ---
+        async loadAttendance() {
+            let url = `${API_BASE_URL}/api/attendance?`;
+            if (this.viewStudentId) url += `student_id=${this.viewStudentId}&`;
+            if (this.viewDate) url += `date=${this.viewDate}&`;
+            const res = await axios.get(url);
+            this.attendanceRecords = res.data;
+        }
+    },
+    mounted() {
+        this.fetchAll();
+        watch(() => this.currentTab, (newTab) => {
+            if (newTab === 'View Attendance') this.loadAttendance();
+            if (newTab === 'Mark Attendance') {
+                this.loadStudentsForAttendance();
+            }
+        });
+        watch(() => this.viewStudentId, () => this.loadAttendance());
+        watch(() => this.viewDate, () => this.loadAttendance());
+    }
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>
