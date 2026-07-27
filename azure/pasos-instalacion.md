@@ -18,7 +18,7 @@ Nombre sugerido
 
 Abrir el enlace
 
-[![Desplegar en Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/main.bicep)
+[![Desplegar en Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/main.json)
 
 ### Paso 4
 

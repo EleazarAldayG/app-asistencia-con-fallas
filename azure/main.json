@@ -1,0 +1,183 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.45.15.27210",
+      "templateHash": "4377955007021128171"
+    }
+  },
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "defaultValue": "tdp-server",
+      "metadata": {
+        "description": "Nombre de la máquina virtual"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "tdp",
+      "metadata": {
+        "description": "Usuario administrador"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Contraseña del usuario"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Ubicación"
+      }
+    }
+  },
+  "variables": {
+    "setupScript": "#!/bin/bash\n\nsudo apt update\n\necho \"Instalando stack...\"\n\nsudo apt install default-mysql-server python3 python3-pip python3-venv git\n\necho \"Clonando proyecto de GitHub...\"\n\nmkdir dev && cd dev && git clone https://github.com/EleazarAldayG/app-asistencia-con-fallas.git && cd app-asistencia-con-fallas\n\necho \"Proyecto clonado! Descargando requirements\"\n\npython3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt\n\necho \"Creando servicios para inicio automatico\"\n\nsudo cp api-service-setup.ini /etc/systemd/system/myapi.service\nsudo systemctl enable mysql\nsudo system start mysql\nsudo systemctl daemon-reload\nsudo systemctl start myapi\nsudo systemctl enable myapi\n\n# Path to your SQL file – adjust if it's in a different folder\nSQL_FILE=\"./db-setup.sql\"\n\necho \"Checking MySQL installation...\"\n\necho \"Executing SQL script: $SQL_FILE\"\nsudo mysql < \"$SQL_FILE\"\n\necho \"Database setup completed successfully.\"\n",
+    "indentedScript": "[replace(variables('setupScript'), '\n', '\n    ')]",
+    "cloudInit": "#cloud-config\r\npackage_update: true\r\n\r\nwrite_files:\r\n  - path: /home/${adminUsername}/vm-setup.sh\r\n    permissions: '0755'\r\n    owner: ${adminUsername}:${adminUsername}\r\n    content: |\r\n    ${indentedScript}\r\n\r\nruncmd:\r\n  - chown ${adminUsername}:${adminUsername} /home/${adminUsername}/vm-setup.sh\r\n  - chmod +x /home/${adminUsername}/vm-setup.sh\r\n  - sudo -u ${adminUsername} bash /home/${adminUsername}/vm-setup.sh > /home/${adminUsername}/setup.log 2>&1\r\n"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-ip', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-nsg', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Allow-SSH",
+            "properties": {
+              "priority": 1000,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-vnet', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "default",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-nic', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('vmName')))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig",
+            "properties": {
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName'))), '2024-05-01').subnets[0].id]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('vmName')))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_B2ats_v2"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "debian",
+            "offer": "debian-12",
+            "sku": "12-gen2",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "deleteOption": "Delete",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
+          }
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "customData": "[base64(variables('cloudInit'))]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmName')))]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "publicIPAddress": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName'))), '2024-05-01').ipAddress]"
+    }
+  }
+}
