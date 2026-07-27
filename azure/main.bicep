@@ -15,22 +15,7 @@ var setupScript = loadTextContent('vm-setup.sh')
 
 var indentedScript = replace(setupScript, '\n', '\n    ')
 
-var cloudInit = '''
-#cloud-config
-package_update: true
-
-write_files:
-  - path: /home/${adminUsername}/vm-setup.sh
-    permissions: '0755'
-    owner: ${adminUsername}:${adminUsername}
-    content: |
-    ${indentedScript}
-
-runcmd:
-  - chown ${adminUsername}:${adminUsername} /home/${adminUsername}/vm-setup.sh
-  - chmod +x /home/${adminUsername}/vm-setup.sh
-  - sudo -u ${adminUsername} bash /home/${adminUsername}/vm-setup.sh > /home/${adminUsername}/setup.log 2>&1
-'''
+var cloudInit = loadTextContent('cloud-init.yaml')
 
 resource nsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
   name: '${vmName}-nsg'

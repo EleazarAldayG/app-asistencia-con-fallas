@@ -1,0 +1,9 @@
+#cloud-config
+
+package_update: true
+
+runcmd:
+  - curl -fsSL https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/vm-setup.sh -o /home/tdp/vm-setup.sh
+  - chmod +x /home/tdp/vm-setup.sh
+  - chown tdp:tdp /home/tdp/vm-setup.sh
+  - sudo -u tdp bash /home/tdp/vm-setup.sh > /home/tdp/setup.log 2>&1
