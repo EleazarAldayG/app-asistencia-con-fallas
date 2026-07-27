@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.45.15.27210",
-      "templateHash": "4377955007021128171"
+      "templateHash": "109344083881056178"
     }
   },
   "parameters": {
@@ -44,18 +44,6 @@
   },
   "resources": [
     {
-      "type": "Microsoft.Network/publicIPAddresses",
-      "apiVersion": "2024-05-01",
-      "name": "[format('{0}-ip', parameters('vmName'))]",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "Basic"
-      },
-      "properties": {
-        "publicIPAllocationMethod": "Static"
-      }
-    },
-    {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2024-05-01",
       "name": "[format('{0}-nsg', parameters('vmName'))]",
@@ -73,6 +61,19 @@
               "sourcePortRange": "*",
               "destinationAddressPrefix": "*",
               "destinationPortRange": "22"
+            }
+          },
+          {
+            "name": "Allow-HTTP",
+            "properties": {
+              "priority": 1010,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "80"
             }
           }
         ]
@@ -115,16 +116,13 @@
               "subnet": {
                 "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName'))), '2024-05-01').subnets[0].id]"
               },
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]"
-              }
+              "privateIPAllocationMethod": "Dynamic"
             }
           }
         ]
       },
       "dependsOn": [
         "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('vmName')))]",
-        "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName')))]",
         "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('vmName')))]"
       ]
     },
@@ -173,11 +171,5 @@
         "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic', parameters('vmName')))]"
       ]
     }
-  ],
-  "outputs": {
-    "publicIPAddress": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', parameters('vmName'))), '2024-05-01').ipAddress]"
-    }
-  }
+  ]
 }

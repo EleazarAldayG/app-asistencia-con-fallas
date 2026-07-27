@@ -32,19 +32,6 @@ runcmd:
   - sudo -u ${adminUsername} bash /home/${adminUsername}/vm-setup.sh > /home/${adminUsername}/setup.log 2>&1
 '''
 
-resource publicIP 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
-  name: '${vmName}-ip'
-  location: location
-
-  sku: {
-    name: 'Basic'
-  }
-
-  properties: {
-    publicIPAllocationMethod: 'Static'
-  }
-}
-
 resource nsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
   name: '${vmName}-nsg'
   location: location
@@ -63,6 +50,20 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
           destinationPortRange: '22'
+        }
+      }
+      {
+        name: 'Allow-HTTP'
+
+        properties: {
+          priority: 1010
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '80'
         }
       }
     ]
@@ -110,9 +111,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
             id: vnet.properties.subnets[0].id
           }
 
-          publicIPAddress: {
-            id: publicIP.id
-          }
+          privateIPAllocationMethod: 'Dynamic'
         }
       }
     ]
@@ -168,5 +167,3 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-03-01' = {
     }
   }
 }
-
-output publicIPAddress string = publicIP.properties.ipAddress

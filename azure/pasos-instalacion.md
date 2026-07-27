@@ -16,9 +16,9 @@ Nombre sugerido
 
 ### Paso 3
 
-Abrir el enlace
+Desplegar en Resource Group como plantilla
 
-[![Desplegar en Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/main.json)
+En el resource group, da click en 'Crear' y busca 'Template Deployment' o 'Despliegue con plantilla'. Copia y pega el contenido del main.json para desplegar todos los recursos necesarios
 
 ### Paso 4
 
