@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.45.15.27210",
-      "templateHash": "109344083881056178"
+      "templateHash": "6772475552239508407"
     }
   },
   "parameters": {
@@ -40,7 +40,7 @@
   "variables": {
     "setupScript": "#!/bin/bash\n\nsudo apt update\n\necho \"Instalando stack...\"\n\nsudo apt install default-mysql-server python3 python3-pip python3-venv git\n\necho \"Clonando proyecto de GitHub...\"\n\nmkdir dev && cd dev && git clone https://github.com/EleazarAldayG/app-asistencia-con-fallas.git && cd app-asistencia-con-fallas\n\necho \"Proyecto clonado! Descargando requirements\"\n\npython3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt\n\necho \"Creando servicios para inicio automatico\"\n\nsudo cp api-service-setup.ini /etc/systemd/system/myapi.service\nsudo systemctl enable mysql\nsudo system start mysql\nsudo systemctl daemon-reload\nsudo systemctl start myapi\nsudo systemctl enable myapi\n\n# Path to your SQL file – adjust if it's in a different folder\nSQL_FILE=\"./db-setup.sql\"\n\necho \"Checking MySQL installation...\"\n\necho \"Executing SQL script: $SQL_FILE\"\nsudo mysql < \"$SQL_FILE\"\n\necho \"Database setup completed successfully.\"\n",
     "indentedScript": "[replace(variables('setupScript'), '\n', '\n    ')]",
-    "cloudInit": "#cloud-config\r\npackage_update: true\r\n\r\nwrite_files:\r\n  - path: /home/${adminUsername}/vm-setup.sh\r\n    permissions: '0755'\r\n    owner: ${adminUsername}:${adminUsername}\r\n    content: |\r\n    ${indentedScript}\r\n\r\nruncmd:\r\n  - chown ${adminUsername}:${adminUsername} /home/${adminUsername}/vm-setup.sh\r\n  - chmod +x /home/${adminUsername}/vm-setup.sh\r\n  - sudo -u ${adminUsername} bash /home/${adminUsername}/vm-setup.sh > /home/${adminUsername}/setup.log 2>&1\r\n"
+    "cloudInit": "#cloud-config\n\npackage_update: true\n\nruncmd:\n  - curl -fsSL https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/vm-setup.sh -o /home/tdp/vm-setup.sh\n  - chmod +x /home/tdp/vm-setup.sh\n  - chown tdp:tdp /home/tdp/vm-setup.sh\n  - sudo -u tdp bash /home/tdp/vm-setup.sh > /home/tdp/setup.log 2>&1"
   },
   "resources": [
     {
