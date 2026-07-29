@@ -4,7 +4,7 @@ sudo apt update
 
 echo "Instalando stack..."
 
-sudo apt install default-mysql-server python3 python3-pip python3-venv git
+sudo apt install -y default-mysql-server python3 python3-pip python3-venv git
 
 echo "Clonando proyecto de GitHub..."
 
