@@ -8,7 +8,7 @@ sudo apt install -y default-mysql-server python3 python3-pip python3-venv git
 
 echo "Clonando proyecto de GitHub..."
 
-cd ~/dev/ && git clone https://github.com/EleazarAldayG/app-asistencia-con-fallas.git && cd app-asistencia-con-fallas
+cd dev/ && git clone https://github.com/EleazarAldayG/app-asistencia-con-fallas.git && cd app-asistencia-con-fallas
 
 echo "Proyecto clonado! Descargando requirements"
 
