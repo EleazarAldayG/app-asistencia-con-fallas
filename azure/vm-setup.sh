@@ -1,5 +1,5 @@
 #!/bin/bash
-# cd ~ && mkdir dev && curl -fsSL https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/vm-setup.sh -o ~/dev/vm-setup.sh && sudo chmod +x ~/dev/vm-setup.sh && cd dev/ && sudo ./vm-setup.sh > ~/setup.log
+# cd ~ && mkdir dev && curl -fsSL https://raw.githubusercontent.com/EleazarAldayG/app-asistencia-con-fallas/refs/heads/main/azure/vm-setup.sh -o ~/dev/vm-setup.sh && sudo chmod +x ~/dev/vm-setup.sh && cd dev/ && sudo ./vm-setup.sh
 sudo apt update
 
 echo "Instalando stack..."
