@@ -2,9 +2,9 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import List, Optional
-import os
-from backend.database import init_db, get_db
-from backend.schemas import (
+from database import init_db, get_db
+from dotenv import load_dotenv
+from schemas import (
     ClassCreate, ClassUpdate, ClassOut,
     StudentCreate, StudentUpdate, StudentOut,
     AttendanceBatchCreate, AttendanceOut
@@ -14,6 +14,8 @@ from backend.schemas import (
 async def lifespan(app: FastAPI):
     await init_db()
     yield
+
+load_dotenv()
 
 app = FastAPI(lifespan=lifespan)
 
