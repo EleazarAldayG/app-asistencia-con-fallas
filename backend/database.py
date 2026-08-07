@@ -6,14 +6,14 @@ db_pool: Pool = None
 async def init_db():
     global db_pool
     db_pool = await create_pool(
-        host=os.getenv("DB_HOST", "localhost"),
+        host=os.getenv("DB_HOST", "asistencia-server.mysql.database.azure.com"),
         port=int(os.getenv("DB_PORT", 3306)),
-        user=os.getenv("DB_USER", "root"),
+        user=os.getenv("DB_USER", "qmvcqgjjvf"),
         password=os.getenv("DB_PASSWORD", ""),
-        db=os.getenv("DB_NAME", "attendance_db"),
+        db=os.getenv("DB_NAME", "asistencia-database"),
         autocommit=True,  # Prevents explicit commits, good for web apps
         minsize=1,
-        maxsize=5       # Keep it small for local testing
+        maxsize=10       # Keep it small for local testing
     )
     
     async with db_pool.acquire() as conn:
